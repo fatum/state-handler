@@ -1,8 +1,5 @@
 module StateHandler
   module Mixing
-    class UnexpectedState < Exception
-    end
-
     def self.included(base)
       base.extend ClassMethods
       base.class_attribute :mapping, :patterns
@@ -50,7 +47,7 @@ module StateHandler
       state = name.to_s.gsub(/\?/, '').to_sym
 
       if name.to_s.end_with?('?')
-        raise UnexpectedState, "Got: #{state.inspect}" unless self.mapping[state]
+        raise StateHandler::UnexpectedState, "Got: #{state.inspect}" unless self.class.mapping[state]
         find_mapped(state)
       elsif block_given?
         @blocks[state] = block
