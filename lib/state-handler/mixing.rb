@@ -75,8 +75,8 @@ module StateHandler
         class_eval(&block)
       end
 
-      def match(regexp, &block)
-        self.patterns[yield] = regexp
+      def match(regexp)
+        self.patterns[regexp.values.first] = regexp.keys.first
       end
 
       def code(*codes, &block)

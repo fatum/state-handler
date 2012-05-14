@@ -9,9 +9,7 @@ describe StateHandler::Mixing do
         code 200 => :enabled
         code 400 => :false
 
-        match /5\d\d/ do
-          :error
-        end
+        match /5\d\d/ => :error
 
         code 401, 402 do
           :bad_params
