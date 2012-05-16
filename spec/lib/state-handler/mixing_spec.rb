@@ -28,10 +28,16 @@ describe StateHandler::Mixing do
     end
   end
 
+  def create(code, &block)
+    s = OpenStruct.new(:code => code)
+    DuplicateDeclarationResponse.new s
+    DummyResponse.new s, &block
+  end
+
   describe "#exclude" do
     it "should call valid block" do
       expect {
-        DummyResponse.new(OpenStruct.new(:code => 400)) do |r|
+        create(400) do |r|
           r.ex :bad_params do
             raise ArgumentError
           end
@@ -41,7 +47,7 @@ describe StateHandler::Mixing do
 
     it "should not call block" do
       expect {
-        DummyResponse.new(OpenStruct.new(:code => 401)) do |r|
+        create(401) do |r|
           r.ex :bad_params do
             raise ArgumentError
           end
@@ -54,7 +60,7 @@ describe StateHandler::Mixing do
     context "when handler not matched" do
       it "should do nothing" do
         expect {
-          DummyResponse.new(OpenStruct.new(:code => 4001)) {  }
+          create(4001) {  }
         }.should_not raise_error
       end
     end
@@ -62,25 +68,19 @@ describe StateHandler::Mixing do
     context "when no handlers" do
       it "should do nothing" do
         expect {
-          DummyResponse.new(OpenStruct.new(:code => 401)) {  }
+          create(401) {}
         }.should_not raise_error
       end
     end
   end
 
-  subject {
-    DuplicateDeclarationResponse.new(response_struct)
-    DummyResponse.new(response_struct)
-  }
-
   describe "#exec" do
-    let(:response_struct) { OpenStruct.new(:code => 401) }
     class ExecException < Exception
     end
 
     it "should call block from 'at' notation with multiply states" do
       expect {
-        subject.exec do |r|
+        create(401) do |r|
           r.at :bad_params, :success, :fake do
             raise ExecException
           end
@@ -90,11 +90,31 @@ describe StateHandler::Mixing do
     end
 
     describe "#group" do
-      let(:response_struct) { OpenStruct.new(:code => 200) }
+      context "when matched value with regex" do
+        it "should call block" do
+          expect {
+            create(500) do |r|
+              r.error do
+                raise ExecException
+              end
+            end
+          }.should raise_error(ExecException)
+        end
+
+        it "should call block from group :errors" do
+          expect {
+            create(500) do |r|
+              r.errors do
+                raise ExecException
+              end
+            end
+          }.should raise_error(ExecException)
+        end
+      end
 
       it "should call block from excluded group :errors" do
         expect {
-          subject.exec do |r|
+          create(200) do |r|
             r.ex :errors do
               raise ExecException
             end
@@ -104,7 +124,7 @@ describe StateHandler::Mixing do
 
       it "should call block mapped to group :success" do
         expect {
-          subject.exec do |r|
+          create(200) do |r|
             r.success do
               raise ExecException
             end
@@ -114,10 +134,9 @@ describe StateHandler::Mixing do
     end
 
     describe "#match" do
-     let(:response_struct) { OpenStruct.new(:code => 500) }
      it "should call matched block" do
         expect {
-          subject.exec do |r|
+          create(500) do |r|
             r.bad_params do
               raise ExecException
             end
@@ -130,10 +149,9 @@ describe StateHandler::Mixing do
       end
     end
 
-    let(:response_struct) { OpenStruct.new(:code => 401) }
     it "should call block" do
       expect {
-        subject.exec do |r|
+        create(401) do |r|
           r.bad_params do
             raise ExecException
           end
@@ -147,12 +165,12 @@ describe StateHandler::Mixing do
   end
 
   describe "#codes" do
-    let(:response_struct) { OpenStruct.new(:code => 401) }
+    subject { create(401) {} }
     its(:bad_params?) { should be_true }
   end
 
   describe "#code" do
-    let(:response_struct) { OpenStruct.new(:code => 200) }
+    subject { create(200) {} }
 
     its(:enabled?) { should be_true }
     its(:false?) { should be_false }

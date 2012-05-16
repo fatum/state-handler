@@ -24,12 +24,6 @@ module StateHandler
         @blocks[state].call
       end
 
-      if self.class.patterns
-        self.class.patterns.each do |s, regex|
-          @blocks[s].call if @response.code.to_s =~ regex
-        end
-      end
-
       if self.class.groups
         self.class.groups.each do |group, states|
           @blocks[group].call if states.include?(state) && @blocks[group]
@@ -48,7 +42,11 @@ module StateHandler
     end
 
     def state
-      self.class.mapping.keys.each.find { |state| find_mapped(state) }
+      patterns = self.class.patterns
+      mapping = self.class.mapping
+
+      mapping.keys.each.find { |state| find_mapped(state) } ||
+        patterns.key(patterns.values.each.find { |regex| @response.code.to_s =~ regex })
     end
 
     def find_mapped(state)
@@ -63,7 +61,9 @@ module StateHandler
       state = name.to_s.gsub(/\?/, '').to_sym
 
       if name.to_s.end_with?('?')
-        raise StateHandler::UnexpectedState, "Got: #{state.inspect}" unless self.class.mapping[state]
+        unless self.class.mapping[state] || self.class.patterns[state]
+          raise StateHandler::UnexpectedState, "Got: #{state.inspect}"
+        end
         find_mapped(state)
       elsif block_given?
         @blocks[state] = block
@@ -95,10 +95,9 @@ module StateHandler
       end
 
       def match(regexp)
-        self.patterns[regexp.values.first] = regexp.keys.first
-      end
-
-      def method_missing
+        state = regexp.values.first
+        self.patterns[state] = regexp.keys.first
+        add_to_group(state)
       end
 
       def code(*codes, &block)
@@ -119,6 +118,10 @@ module StateHandler
       def create(state, value)
         raise ArgumentError, "State '#{state}' already defined" if self.mapping[state]
         self.mapping[state] = value
+        add_to_group(state)
+      end
+
+      def add_to_group(state)
         if @current_group
           self.groups[@current_group] ||= []
           self.groups[@current_group] << state
