@@ -7,9 +7,15 @@ require 'state-handler'
 class ResponseHandler
   include StateHandler::Mixing
 
-  code 200 => :success
-  code 404 => :not_found
-  code 401 => :unauthorized
+  group :success do
+    code 200 => :success
+    code 302 => :already_added
+  end
+
+  group :pass do
+    code 404 => :not_found
+    code 401 => :unauthorized
+  end
 
   match /5\d\d/ => :error
 end

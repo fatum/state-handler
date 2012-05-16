@@ -2,15 +2,17 @@ module StateHandler
   module Mixing
     def self.included(base)
       base.extend ClassMethods
-      base.class_attribute :mapping, :patterns
-      base.mapping, base.patterns = {}, {}
+      %w{mapping patterns groups}.each do |attr|
+        base.class_attribute attr.to_sym
+        base.send "#{attr}=", {}
+      end
     end
 
     attr_reader :response
 
     def initialize(response, &block)
       raise ArgumentError unless response.respond_to?(:code)
-      @response, @blocks = response, {}
+      @response, @blocks, @excludes = response, {}, {}
       exec(&block) if block_given?
     end
 
@@ -18,17 +20,31 @@ module StateHandler
       # map blocks
       yield(self)
 
-      if state
+      if state && @blocks[state]
         @blocks[state].call
-      else
+      end
+
+      if self.class.patterns
         self.class.patterns.each do |s, regex|
           @blocks[s].call if @response.code.to_s =~ regex
         end
       end
+
+      if self.class.groups
+        self.class.groups.each do |group, states|
+          @blocks[group].call if states.include?(state) && @blocks[group]
+        end
+      end
+
+      @excludes.each { |s, callback| callback.call unless s == state }
     end
 
     def at(*args, &block)
       args.each { |s| @blocks[s.to_sym] = block }
+    end
+
+    def ex(*args, &block)
+      args.each { |s| @excludes[s.to_sym] = block }
     end
 
     def state
@@ -54,6 +70,7 @@ module StateHandler
       end
     end
 
+  private
     module ClassMethods
       def class_attribute(*attrs)
         attrs.each do |name|
@@ -72,6 +89,8 @@ module StateHandler
       end
 
       def map(&block)
+        # TODO: refactor
+        # Create Dsl class
         class_eval(&block)
       end
 
@@ -79,11 +98,30 @@ module StateHandler
         self.patterns[regexp.values.first] = regexp.keys.first
       end
 
+      def method_missing
+      end
+
       def code(*codes, &block)
         if codes.first.kind_of?(Hash)
-          self.mapping[codes.first.values.first] = codes.first.keys.first
+          create(codes.first.values.first, codes.first.keys.first)
         elsif block_given?
-          self.mapping[yield] = codes
+          create(yield, codes)
+        end
+      end
+
+      def group(name, &block)
+        @current_group = name.to_sym
+        class_eval(&block)
+        @current_group = nil
+      end
+
+    private
+      def create(state, value)
+        raise ArgumentError, "State '#{state}' already defined" if self.mapping[state]
+        self.mapping[state] = value
+        if @current_group
+          self.groups[@current_group] ||= []
+          self.groups[@current_group] << state
         end
       end
     end

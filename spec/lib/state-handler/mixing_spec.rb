@@ -6,13 +6,16 @@ describe StateHandler::Mixing do
       include StateHandler::Mixing
 
       map do
-        code 200 => :enabled
-        code 400 => :false
+        group :success do
+          code 200 => :enabled
+          code 400 => :false
+        end
 
-        match /5\d\d/ => :error
-
-        code 401, 402 do
-          :bad_params
+        group :errors do
+          match /5\d\d/ => :error
+          code 401, 402 do
+            :bad_params
+          end
         end
       end
     end
@@ -24,6 +27,47 @@ describe StateHandler::Mixing do
       end
     end
   end
+
+  describe "#exclude" do
+    it "should call valid block" do
+      expect {
+        DummyResponse.new(OpenStruct.new(:code => 400)) do |r|
+          r.ex :bad_params do
+            raise ArgumentError
+          end
+        end
+      }.should raise_error(ArgumentError)
+    end
+
+    it "should not call block" do
+      expect {
+        DummyResponse.new(OpenStruct.new(:code => 401)) do |r|
+          r.ex :bad_params do
+            raise ArgumentError
+          end
+        end
+      }.should_not raise_error
+    end
+  end
+
+  describe "fails" do
+    context "when handler not matched" do
+      it "should do nothing" do
+        expect {
+          DummyResponse.new(OpenStruct.new(:code => 4001)) {  }
+        }.should_not raise_error
+      end
+    end
+
+    context "when no handlers" do
+      it "should do nothing" do
+        expect {
+          DummyResponse.new(OpenStruct.new(:code => 401)) {  }
+        }.should_not raise_error
+      end
+    end
+  end
+
   subject {
     DuplicateDeclarationResponse.new(response_struct)
     DummyResponse.new(response_struct)
@@ -43,6 +87,30 @@ describe StateHandler::Mixing do
           r.test { raise ArgumentError }
         end
       }.should raise_error(ExecException)
+    end
+
+    describe "#group" do
+      let(:response_struct) { OpenStruct.new(:code => 200) }
+
+      it "should call block from excluded group :errors" do
+        expect {
+          subject.exec do |r|
+            r.ex :errors do
+              raise ExecException
+            end
+          end
+        }.should raise_error(ExecException)
+      end
+
+      it "should call block mapped to group :success" do
+        expect {
+          subject.exec do |r|
+            r.success do
+              raise ExecException
+            end
+          end
+        }.should raise_error(ExecException)
+      end
     end
 
     describe "#match" do
@@ -80,7 +148,6 @@ describe StateHandler::Mixing do
 
   describe "#codes" do
     let(:response_struct) { OpenStruct.new(:code => 401) }
-
     its(:bad_params?) { should be_true }
   end
 
