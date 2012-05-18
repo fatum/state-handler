@@ -1,5 +1,5 @@
 module StateHandler
-  module Mixing
+  module Mixin
     def self.included(base)
       base.extend ClassMethods
       %w{mapping patterns groups}.each do |attr|
