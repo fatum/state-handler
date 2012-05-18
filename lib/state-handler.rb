@@ -1,5 +1,5 @@
 require 'state-handler/version'
-require 'state-handler/mixing'
+require 'state-handler/mixin'
 
 module StateHandler
   class UnexpectedState < Exception

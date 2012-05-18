@@ -5,7 +5,7 @@ require 'ostruct'
 require 'state-handler'
 
 class ResponseHandler
-  include StateHandler::Mixing
+  include StateHandler::Mixin
 
   code 200 => :success
   code 404 => :not_found
