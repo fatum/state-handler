@@ -5,7 +5,7 @@ require 'ostruct'
 require 'state-handler'
 
 class ResponseHandler
-  include StateHandler::Mixing
+  include StateHandler::Mixin
 
   group :success do
     code 200 => :success
