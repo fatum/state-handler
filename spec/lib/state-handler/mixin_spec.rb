@@ -1,9 +1,9 @@
 require 'spec_helper'
 
-describe StateHandler::Mixing do
+describe StateHandler::Mixin do
   before do
     class DummyResponse
-      include StateHandler::Mixing
+      include StateHandler::Mixin
 
       map do
         group :success do
@@ -20,7 +20,7 @@ describe StateHandler::Mixing do
       end
     end
     class DuplicateDeclarationResponse
-      include StateHandler::Mixing
+      include StateHandler::Mixin
 
       map do
         code 200 => :fuck_up
