@@ -2,7 +2,7 @@ module StateHandler
   module Mixin
     def self.included(base)
       base.extend ClassMethods
-      %w{mapping patterns groups}.each do |attr|
+      %w{mapping patterns groups attr}.each do |attr|
         base.class_attribute attr.to_sym
         base.send "#{attr}=", {}
       end
@@ -11,8 +11,9 @@ module StateHandler
     attr_reader :response
 
     def initialize(response, &block)
-      raise ArgumentError unless response.respond_to?(:code)
       @response, @blocks, @excludes = response, {}, {}
+
+      raise ArgumentError unless response.respond_to?(attribute)
       exec(&block) if block_given?
     end
 
@@ -46,15 +47,27 @@ module StateHandler
       mapping = self.class.mapping
 
       mapping.keys.each.find { |state| find_mapped(state) } ||
-        patterns.key(patterns.values.each.find { |regex| @response.code.to_s =~ regex })
+        patterns.key(
+          patterns.values.each.find do |regex|
+            get_attribute_value.to_s =~ regex
+          end
+        )
     end
 
     def find_mapped(state)
       if self.class.mapping[state].kind_of?(Array)
-        self.class.mapping[state].include?(@response.code.to_i)
+        self.class.mapping[state].include?(get_attribute_value)
       else
-        self.class.mapping[state] == @response.code.to_i
+        self.class.mapping[state] == get_attribute_value
       end
+    end
+
+    def attribute
+      self.class.attr
+    end
+
+    def get_attribute_value
+      @response.send attribute
     end
 
     def method_missing(name, &block)
@@ -92,6 +105,10 @@ module StateHandler
         # TODO: refactor
         # Create Dsl class
         class_eval(&block)
+      end
+
+      def attribute(attr)
+        self.attr = attr.to_sym
       end
 
       def match(regexp)

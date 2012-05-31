@@ -5,6 +5,7 @@ describe StateHandler::Mixin do
     class DummyResponse
       include StateHandler::Mixin
 
+      attribute :response_code
       map do
         group :success do
           code 200 => :enabled
@@ -22,6 +23,7 @@ describe StateHandler::Mixin do
     class DuplicateDeclarationResponse
       include StateHandler::Mixin
 
+      attribute :response_code
       map do
         code 200 => :fuck_up
       end
@@ -29,7 +31,7 @@ describe StateHandler::Mixin do
   end
 
   def create(code, &block)
-    s = OpenStruct.new(:code => code)
+    s = OpenStruct.new(:response_code => code)
     DuplicateDeclarationResponse.new s
     DummyResponse.new s, &block
   end
