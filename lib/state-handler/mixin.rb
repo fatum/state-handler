@@ -11,7 +11,6 @@ module StateHandler
     attr_reader :response
 
     def initialize(response, &block)
-      raise ArgumentError unless response.respond_to?(:code)
       @response, @blocks, @excludes = response, {}, {}
       exec(&block) if block_given?
     end

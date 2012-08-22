@@ -18,6 +18,10 @@ describe StateHandler::Mixin do
           end
         end
       end
+
+      def timeout?
+        !response
+      end
     end
     class DuplicateDeclarationResponse
       include StateHandler::Mixin
@@ -32,6 +36,19 @@ describe StateHandler::Mixin do
     s = OpenStruct.new(:code => code)
     DuplicateDeclarationResponse.new s
     DummyResponse.new s, &block
+  end
+
+  describe "#initialize" do
+    it "should handle timeut" do
+      class TempException < Exception; end
+      expect {
+        DummyResponse.new nil do |r|
+          if r.timeout?
+            raise TempException
+          end
+        end
+      }.should raise_error TempException
+    end
   end
 
   describe "#exclude" do
