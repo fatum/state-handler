@@ -19,6 +19,8 @@ module StateHandler
       # map blocks
       yield(self)
 
+      return unless @response
+
       if state && @blocks[state]
         @blocks[state].call
       end
