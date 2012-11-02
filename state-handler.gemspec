@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
-require File.expand_path('../lib/state-handler/version', __FILE__)
+$:.unshift File.expand_path("../lib", __FILE__)
+require "state-handler/version"
 
 Gem::Specification.new do |gem|
   gem.author       = "Maxim Filipovich"
